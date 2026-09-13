@@ -73,7 +73,7 @@ def imp_calls():
         for el in d: #перекидываем данные из словаря в CH
             client.query(f'INSERT INTO itex.b24 (date, calls) VALUES ({el}, {d[el]})')
             client.query('alter table itex.next delete where 1=1')
-            client.query(f'insert INTO itex.next (next) VALUES ({iLastID}')
+            client.query(f'insert INTO itex.next (next) VALUES ({iLastID})')
         return jsonify({
             "status": "success", 
             "message": f"Импортировано {str(iLastID)} звонков"
