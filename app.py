@@ -5,7 +5,12 @@ from fake_useragent import UserAgent
 import json
 import requests      # Библиотека для отправки запросов
 import datetime      # Библиотека для даты
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.json.ensure_ascii = False
 
@@ -18,6 +23,7 @@ ch_database = os.getenv('CLICKHOUSE_DB', 'default')
 page_link= os.getenv('PAGE_LINK', '')
 
 # Инициализируем клиент ClickHouse
+logger.info(f"Подключение к ClickHouse: {ch_host}:{ch_port}")
 client = clickhouse_connect.get_client(
     host=ch_host,
     port=ch_port,
@@ -28,12 +34,14 @@ client = clickhouse_connect.get_client(
 
 @app.route('/')
 def hello():
+    logger.info("Запрос к корневому маршруту")
     return "Flask приложение работает!"
 
 @app.route('/clickhouse-test')
 def ch_test():
     try:
         # Выполняем простой запрос для проверки связи
+        logger.info("Проверка связи с CH")
         result = client.query('SELECT version()')
         version = result.result_rows[0][0]
         return jsonify({
@@ -42,6 +50,7 @@ def ch_test():
             "clickhouse_version": version
         })
     except Exception as e:
+        logger.error(f"Ошибка импорта: {str(e)}", exc_info=True)
         return jsonify({
             "status": "error", 
             "message": f"Ошибка подключения: {str(e)}"
@@ -61,24 +70,30 @@ def imp_calls():
             cRes=profile['result'] #потрошим результат запроса
             if 'next' in profile: #если есть следующая партия - т.е. еще не конец парсинга
                 if iNext > profile['next']: #если вдруг следующая партия меньше текущей
-                    print("Ошибка в данных {iNext} -> {profile['next']}")
+                    logger.info(f"Ошибка в данных {iNext} -> {profile['next']}")
                     break
                 iNext=profile['next']
             else:
                 iNext=-999
             for cEl in cRes: #перебираем текущие 50 записей
                 cDate = cEl['CALL_START_DATE'][:10] #выкусываем дату из строки
-                if cEl['PORTAL_USER_ID'] in ('16','17','3062','3068','144'): #фильтруем звонки по консультантам техподдержки
+                if cEl['PORTAL_USER_ID'] in ('16','17','3062','3068','144','1392','35','47','140'): #фильтруем звонки по консультантам техподдержки
                     if cDate not in d: #если такой даты еще нет в словаре - добавляем, зануляем счетчик звонков 
                         d[cDate] = 0
                     d[cDate] += 1 #плюсуем счетчик звонков
                 iLastID+=1
-            print('Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
-        for el in d: #перекидываем данные из словаря в CH
-            print(f'Записываем: {el}, {d[el]}')
-            client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
+            for el in d: #перекидываем данные из словаря в CH
+                logger.info(f'Записываем: {el}, {d[el]}')
+                client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
+            d = dict()
             client.query('alter table itex.next delete where 1=1')
-            client.query(f'insert INTO itex.next (next) VALUES ({iLastID})')
+            client.query(f'insert INTO itex.next (next) VALUES ({iLastID})') #запоминаем где остановились                
+            logger.info(f'Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
+        # for el in d: #перекидываем данные из словаря в CH
+        #     logger.info(f'Записываем: {el}, {d[el]}')
+        #     client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
+        # client.query('alter table itex.next delete where 1=1')
+        # client.query(f'insert INTO itex.next (next) VALUES ({iLastID})') #запоминаем где остановились
         return jsonify({
             "status": "success", 
             "message": f"Импортировано {str(iLastID)} звонков"

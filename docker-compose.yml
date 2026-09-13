@@ -42,7 +42,7 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - PAGE_LINK=${PAGE_LINK}
-      - PYTHONUNBUFFERED=1
+      #- PYTHONUNBUFFERED=1
     depends_on:
       clickhouse:
         condition: service_healthy
