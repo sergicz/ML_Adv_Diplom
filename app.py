@@ -60,6 +60,9 @@ def imp_calls():
             profile = json.loads(response.content.decode('utf-8')) #запрос возвращает 50 записей за раз
             cRes=profile['result'] #потрошим результат запроса
             if 'next' in profile: #если есть следующая партия - т.е. еще не конец парсинга
+                if iNext > profile['next']: #если вдруг следующая партия меньше текущей
+                    print("Ошибка в данных {iNext} -> {profile['next']}")
+                    break
                 iNext=profile['next']
             else:
                 iNext=-999
@@ -69,7 +72,7 @@ def imp_calls():
                     if cDate not in d: #если такой даты еще нет в словаре - добавляем, зануляем счетчик звонков 
                         d[cDate] = 0
                     d[cDate] += 1 #плюсуем счетчик звонков
-                iLastID+=1    
+                iLastID+=1
             print('Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
         for el in d: #перекидываем данные из словаря в CH
             print(f'Записываем: {el}, {d[el]}')
