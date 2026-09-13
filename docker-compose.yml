@@ -41,6 +41,7 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - PAGE_LINK=${PAGE_LINK}
     depends_on:
       clickhouse:
         condition: service_healthy
