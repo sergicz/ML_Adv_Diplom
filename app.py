@@ -1,6 +1,10 @@
 import os
 from flask import Flask, jsonify
 import clickhouse_connect
+from fake_useragent import UserAgent
+import json
+import requests      # Библиотека для отправки запросов
+import datetime      # Библиотека для даты
 
 app = Flask(__name__)
 
@@ -46,7 +50,9 @@ def ch_test():
 def imp_calls():
     try:
         # Импортируем звонки из Б24 в CH
-        iNext = 0 #инициализируем счетчик страниц
+        cNext=client.query('SELECT select next from next')
+        iNext = cNext[0][0] #инициализируем счетчик страниц
+        iLastID=iNext
         d = dict() #инициализация словаря для накопления данных
         while iNext>=0 and iNext < 100: #ограничим для теста количество записей, в реале 500К записей грузятся 5 часов
             response = requests.get(page_link+str(iNext), headers={'User-Agent': UserAgent().chrome}) #получаем порцию данных из Б24
@@ -58,39 +64,19 @@ def imp_calls():
                 iNext=-999
             for cEl in cRes: #перебираем текущие 50 записей
                 cDate = cEl['CALL_START_DATE'][:10] #выкусываем дату из строки
-                if cEl['PORTAL_USER_ID'] in ('16','17','35','47','140','144','1392'): #фильтруем звонки по консультантам техподдержки
+                if cEl['PORTAL_USER_ID'] in ('16','17','3062','3068','144'): #фильтруем звонки по консультантам техподдержки
                     if cDate not in d: #если такой даты еще нет в словаре - добавляем, зануляем счетчик звонков и сразу присваиваем сумму из csv
-                        d[cDate] = [0,dSum[cDate[:8]+'01']]
-                    d[cDate][0] += 1 #плюсуем счетчик звонков
+                        d[cDate] = [0]
+                    d[cDate] += 1 #плюсуем счетчик звонков
+                iLastID+=1    
             print('Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
-        prevCalls = 0 #звонки за предыдущий день занулим для 1-го шага
-        for el in d: #перекидываем данные из словаря в датафрейм с обогащением признаками
-            try:
-                nYear = int(el[:4])     #год
-                nMonth = int(el[5:7])   #месяц
-                nDay = int(el[8:10])    #день месяца
-                nDoW = datetime.date(nYear, nMonth, nDay).weekday() #день недели
-                if d[el][0] < 10: #если звонков мало - считаем выходным/праздничным днем
-                    nHoliday = 1
-                else:  
-                    nHoliday = 0
-                if nDay < 7 and nMonth > 1: #начало месяца не в январе
-                    nDecade = 1 #начало (признак начало/середины/конца месяца)
-                elif nMonth == 1 and nDay < 15: #начало месяца в январе
-                    nDecade = 1 #начало
-                elif nDay > 25:
-                    nDecade = 3 #конец
-                else:
-                    nDecade = 2 #середина
-                final_df = final_df.append({'date':datetime.date(nYear, nMonth, nDay), 'year':nYear,'month':nMonth, 'day':nDay, 'dow':nDoW, 'holiday':nHoliday, 'decade':nDecade, 'prevcalls':prevCalls, 'sum':d[el][1], 'calls':d[el][0]}, ignore_index=True)
-                prevCalls = d[el][0] #звонки за предыдущий день
-            except:
-                print(el,'- некорректные данные, пропускаем')
-        final_df.to_csv('calls.csv') #сохраняем датафрейм в csv
-        print("Кол-во строк",final_df.shape[0]) #контроль размера датафрейма
+        for el in d: #перекидываем данные из словаря в CH
+            client.query(f'INSERT INTO b24 (date, calls) VALUES ({el}, {d[el]})')
+            client.query('alter table next delete where 1=1')
+            client.query(f'insert INTO next (next) VALUES ({iLastID}')
         return jsonify({
             "status": "success", 
-            "message": f"Импортировано {str(iCalls)} звонков"
+            "message": f"Импортировано {str(iLastID)} звонков"
         })
     except Exception as e:
         return jsonify({
