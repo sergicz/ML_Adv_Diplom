@@ -1,6 +1,4 @@
 Flask==3.0.0
 clickhouse-connect==0.7.0
-fake_useragent
-requests
-datetime
-json
+fake_useragent==2.2.0
+requests==2.34.2
