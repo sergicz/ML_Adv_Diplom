@@ -50,7 +50,7 @@ def ch_test():
 def imp_calls():
     try:
         # Импортируем звонки из Б24 в CH
-        cNext=client.query('SELECT select next from next')
+        cNext=client.query('SELECT next from next')
         iNext = cNext[0][0] #инициализируем счетчик страниц
         iLastID=iNext
         d = dict() #инициализация словаря для накопления данных
