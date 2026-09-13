@@ -50,7 +50,7 @@ def ch_test():
 def imp_calls():
     try:
         # Импортируем звонки из Б24 в CH
-        cNext=client.query('SELECT next from next')
+        cNext=client.query('SELECT next from itex.next')
         iNext = cNext[0][0] #инициализируем счетчик страниц
         iLastID=iNext
         d = dict() #инициализация словаря для накопления данных
@@ -71,9 +71,9 @@ def imp_calls():
                 iLastID+=1    
             print('Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
         for el in d: #перекидываем данные из словаря в CH
-            client.query(f'INSERT INTO b24 (date, calls) VALUES ({el}, {d[el]})')
-            client.query('alter table next delete where 1=1')
-            client.query(f'insert INTO next (next) VALUES ({iLastID}')
+            client.query(f'INSERT INTO itex.b24 (date, calls) VALUES ({el}, {d[el]})')
+            client.query('alter table itex.next delete where 1=1')
+            client.query(f'insert INTO itex.next (next) VALUES ({iLastID}')
         return jsonify({
             "status": "success", 
             "message": f"Импортировано {str(iLastID)} звонков"
