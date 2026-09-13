@@ -11,7 +11,6 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-      - PYTHONUNBUFFERED=1
     volumes:
       - c:/users/q/clickhouse/data:/var/lib/clickhouse
       - c:/users/q/clickhouse/logs:/var/log/clickhouse-server      
@@ -43,6 +42,7 @@ services:
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - PAGE_LINK=${PAGE_LINK}
+      - PYTHONUNBUFFERED=1
     depends_on:
       clickhouse:
         condition: service_healthy
