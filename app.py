@@ -51,8 +51,8 @@ def imp_calls():
     try:
         # Импортируем звонки из Б24 в CH
         cNext=client.query('SELECT next from itex.next')
-        iNext = cNext[0][0] #инициализируем счетчик страниц
-        iLastID=iNext
+        iNext = cNext.result_rows[0][0] #инициализируем счетчик страниц
+        iLastID = iNext
         d = dict() #инициализация словаря для накопления данных
         while iNext>=0 and iNext < 100: #ограничим для теста количество записей, в реале 500К записей грузятся 5 часов
             response = requests.get(page_link+str(iNext), headers={'User-Agent': UserAgent().chrome}) #получаем порцию данных из Б24
