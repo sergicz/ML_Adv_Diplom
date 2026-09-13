@@ -55,7 +55,7 @@ def imp_calls():
         iNext = cNext.result_rows[0][0] #инициализируем счетчик страниц
         iLastID = iNext
         d = dict() #инициализация словаря для накопления данных
-        while iNext>=0 and iNext < 1000: #ограничим для теста количество записей, в реале 500К записей грузятся 5 часов
+        while iNext>=0 and iNext < 10000000: #ограничим для теста количество записей, в реале 500К записей грузятся 5 часов
             response = requests.get(page_link+str(iNext), headers={'User-Agent': UserAgent().chrome}) #получаем порцию данных из Б24
             profile = json.loads(response.content.decode('utf-8')) #запрос возвращает 50 записей за раз
             cRes=profile['result'] #потрошим результат запроса
