@@ -109,7 +109,26 @@ def train():
     logger.info(f'Модель обучена на данных до {dend}')
     model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
     model.fit(df)
-    joblib.dump(model, 'b24_model.joblib')
+    model_data = {
+        'model': model,
+        'metadata': {
+            'prophet_version': Prophet.__version__ if hasattr(Prophet, '__version__') else 'unknown',
+            'training_data': {
+                'rows_count': len(model.history),
+                'date_range': {
+                    'start': str(model.history['ds'].min().date()),
+                    'end': str(model.history['ds'].max().date())
+                }
+            },
+            'model_params': {
+                'yearly_seasonality': model.yearly_seasonality,
+                'weekly_seasonality': model.weekly_seasonality,
+                'daily_seasonality': model.daily_seasonality
+            },
+            'notes': 'Модель для прогнозирования нагрузки звонков'
+        }
+    }
+    joblib.dump(model_data, 'b24_model.joblib')
     logger.info('Сохраняем модель b24_model.joblib')
     return jsonify({
             "status": "success", 
@@ -122,9 +141,12 @@ def predict():
     if not data:
         return jsonify({"error": "JSON body required"}), 400
     target_date = data.get('target_date')
-    lastdate = client.query('SELECT max(dat) from itex.b24').result_rows[0][0]
+    #lastdate = client.query('SELECT max(dat) from itex.b24').result_rows[0][0]
     logger.info('Загружаем модель b24_model.joblib')
-    model = joblib.load('b24_model.joblib')
+    model_data = joblib.load('b24_model.joblib')
+    metadata = model_data['metadata']
+    model = model_data['model']
+    lastdate = str(metadata['training_data']['date_range']['end'])
     logger.info(f"Формируем будущий период на {(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days} дней")
     future = model.make_future_dataframe(periods=(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days)
     logger.info(f'Предсказываем значение на {target_date}')
