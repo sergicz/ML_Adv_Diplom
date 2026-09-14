@@ -50,7 +50,7 @@ def ch_test():
             "clickhouse_version": version
         })
     except Exception as e:
-        logger.error(f"Ошибка импорта: {str(e)}", exc_info=True)
+        logger.error(f"Ошибка подключения: {str(e)}", exc_info=True)
         return jsonify({
             "status": "error", 
             "message": f"Ошибка подключения: {str(e)}"
