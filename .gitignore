@@ -1,5 +1,6 @@
 # Environment variables
 .env
+.gitignore 
 
 # Python
 __pycache__/
