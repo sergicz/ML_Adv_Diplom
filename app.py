@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import clickhouse_connect
 from fake_useragent import UserAgent
 import requests      # Библиотека для отправки запросов
@@ -99,7 +99,7 @@ def imp_calls():
 
 @app.route('/train', methods=['GET', 'POST'])
 def train():
-    data = requests.get_json(silent=True)  # silent=True не выбросит ошибку
+    data = request.get_json(silent=True)  # silent=True не выбросит ошибку
     if data is None:
         return jsonify({"error": "Invalid JSON"}), 400
     dend = data.get('dend','2018-01-01')
@@ -118,7 +118,7 @@ def train():
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
-    data = requests.get_json()
+    data = request.get_json()
     if not data:
         return jsonify({"error": "JSON body required"}), 400
     target_date = data.get('target_date')
