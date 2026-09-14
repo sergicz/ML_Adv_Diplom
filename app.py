@@ -80,12 +80,12 @@ def imp_calls():
                     if cDate not in d: #если такой даты еще нет в словаре - добавляем, зануляем счетчик звонков 
                         d[cDate] = 0
                     d[cDate] += 1 #плюсуем счетчик звонков
-                iLastID+=1
+                iLastID + =1
             for el in d: #перекидываем данные из словаря в CH
                 logger.info(f'Записываем: {el}, {d[el]}')
                 client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
             client.query('alter table itex.next delete where 1=1')
-            client.query(f'insert INTO itex.next (next) VALUES ({iNext})') #запоминаем где остановились                
+            client.query(f'insert INTO itex.next (next) VALUES ({iLastID})') #запоминаем где остановились                
             logger.info(f'Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
         return jsonify({
             "status": "success", 
