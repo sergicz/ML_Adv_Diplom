@@ -102,11 +102,11 @@ def train():
     data = request.get_json(silent=True)  # silent=True не выбросит ошибку
     if data is None:
         return jsonify({"error": "Invalid JSON"}), 400
-    dend = data.get('target_date','2018-01-01')
+    target_date = data.get('target_date','2018-01-01')
     df = client.query_df(f"SELECT toDate(dat) as ds, SUM(calls) AS y from itex.b24 where dat < '{target_date}' group by toDate(dat) order by toDate(dat)")
     if df.empty:
         return jsonify({"status": "error", "message": "База данных пуста или запрос не вернул результатов"}), 400
-    logger.info(f'Модель обучена на данных до {dend}')
+    logger.info(f'Модель обучена на данных до {target_date}')
     model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
     model.fit(df)
     model_data = {
@@ -132,7 +132,7 @@ def train():
     logger.info('Сохраняем модель b24_model.joblib')
     return jsonify({
             "status": "success", 
-            "message": f'Модель обучена и сохранена на данных до {dend}'
+            "message": f'Модель обучена и сохранена на данных до {target_date}'
         })
 
 @app.route('/predict', methods=['GET', 'POST'])
