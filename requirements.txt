@@ -3,3 +3,7 @@ clickhouse-connect==0.7.0
 fake_useragent==2.2.0
 requests==2.34.2
 python-dotenv
+prophet=1.4.0
+joblib
+matplotlib
+pandas

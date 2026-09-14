@@ -2,10 +2,12 @@ import os
 from flask import Flask, jsonify
 import clickhouse_connect
 from fake_useragent import UserAgent
-import json
 import requests      # Библиотека для отправки запросов
-import datetime      # Библиотека для даты
 import logging
+from prophet import Prophet
+import joblib
+import pandas as pd
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,28 +58,26 @@ def ch_test():
             "message": f"Ошибка подключения: {str(e)}"
         }), 500
 
-@app.route('/import')
+@app.route('/import', methods=['GET', 'POST'])
 def imp_calls():
     try:
         # Импортируем звонки из Б24 в CH
         cNext=client.query('SELECT next from itex.next')
         iNext = cNext.result_rows[0][0] #инициализируем счетчик страниц
         iLastID = iNext
-        d = dict() #инициализация словаря для накопления данных
+        iFirstID = iNext
         while iNext>=0 and iNext < 10000000: #ограничим для теста количество записей, в реале 500К записей грузятся 5 часов
+            d = dict() #инициализация словаря для накопления данных
             response = requests.get(page_link+str(iNext), headers={'User-Agent': UserAgent().chrome}) #получаем порцию данных из Б24
             profile = json.loads(response.content.decode('utf-8')) #запрос возвращает 50 записей за раз
             cRes=profile['result'] #потрошим результат запроса
             if 'next' in profile: #если есть следующая партия - т.е. еще не конец парсинга
-                if iNext > profile['next']: #если вдруг следующая партия меньше текущей
-                    logger.info(f"Ошибка в данных {iNext} -> {profile['next']}")
-                    break
                 iNext=profile['next']
             else:
                 iNext=-999
             for cEl in cRes: #перебираем текущие 50 записей
                 cDate = cEl['CALL_START_DATE'][:10] #выкусываем дату из строки
-                if cEl['PORTAL_USER_ID'] in ('16','17','3062','3068','144','1392','35','47','140'): #фильтруем звонки по консультантам техподдержки
+                if cEl['PORTAL_USER_ID'] in ('16','17','3062','3068','144','1392','35','47','140'): #берем только звонки консультантам техподдержки
                     if cDate not in d: #если такой даты еще нет в словаре - добавляем, зануляем счетчик звонков 
                         d[cDate] = 0
                     d[cDate] += 1 #плюсуем счетчик звонков
@@ -85,24 +85,62 @@ def imp_calls():
             for el in d: #перекидываем данные из словаря в CH
                 logger.info(f'Записываем: {el}, {d[el]}')
                 client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
-            d = dict()
             client.query('alter table itex.next delete where 1=1')
-            client.query(f'insert INTO itex.next (next) VALUES ({iLastID})') #запоминаем где остановились                
+            client.query(f'insert INTO itex.next (next) VALUES ({iNext})') #запоминаем где остановились                
             logger.info(f'Читаем следующую партию: '+str(iNext) +  ' Дата: '+ cDate)
-        # for el in d: #перекидываем данные из словаря в CH
-        #     logger.info(f'Записываем: {el}, {d[el]}')
-        #     client.query(f"INSERT INTO itex.b24 (dat, calls) VALUES ('{el}', {d[el]})")
-        # client.query('alter table itex.next delete where 1=1')
-        # client.query(f'insert INTO itex.next (next) VALUES ({iLastID})') #запоминаем где остановились
         return jsonify({
             "status": "success", 
-            "message": f"Импортировано {str(iLastID)} звонков"
+            "message": f"Импортировано {str(iLastID-iFirstID)} звонков. Итого {str(iLastID)} звонков"
         })
     except Exception as e:
         return jsonify({
             "status": "error", 
             "message": f"Ошибка импорта: {str(e)}"
         }), 500
+
+@app.route('/train', methods=['GET', 'POST'])
+def train():
+    data = requests.get_json(silent=True)  # silent=True не выбросит ошибку
+    if data is None:
+        return jsonify({"error": "Invalid JSON"}), 400
+    dend = data.get('dend','2018-01-01')
+    df = client.query_df(f"SELECT toDate(dat) as ds, SUM(calls) AS y from itex.b24 where dat < '{dend}' group by toDate(dat) order by toDate(dat)")
+    if df.empty:
+        return jsonify({"status": "error", "message": "База данных пуста или запрос не вернул результатов"}), 400
+    logger.info(f'Модель обучена на данных до {dend}')
+    model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+    model.fit(df)
+    joblib.dump(model, 'b24_model.joblib')
+    logger.info('Сохраняем модель b24_model.joblib')
+    return jsonify({
+            "status": "success", 
+            "message": f'Модель обучена и сохранена на данных до {dend}'
+        })
+
+@app.route('/predict', methods=['GET', 'POST'])
+def predict():
+    data = requests.get_json()
+    if not data:
+        return jsonify({"error": "JSON body required"}), 400
+    target_date = data.get('target_date')
+    lastdate = client.query('SELECT max(dat) from itex.b24').result_rows[0][0]
+    logger.info('Загружаем модель b24_model.joblib')
+    model = joblib.load('b24_model.joblib')
+    logger.info(f"Формируем будущий период на {(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days} дней")
+    future = model.make_future_dataframe(periods=(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days)
+    logger.info(f'Предсказываем значение на {target_date}')
+    forecast = model.predict(future)
+    result = forecast[forecast['ds'] == pd.to_datetime(target_date)]
+    if not result.empty:
+        return jsonify({
+            "status": "success", 
+            "message": f"Прогноз на {target_date}: {int(result['yhat'].iloc[0])}"
+        })
+    else:
+        return jsonify({
+            "status": "error", 
+            "message": f"Отсутствует дата {target_date} в будущем периоде"
+        }), 400
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
