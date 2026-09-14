@@ -23,7 +23,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 30s
 
   # Сервис Flask приложения
   flask_app:
@@ -44,6 +44,6 @@ services:
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - PAGE_LINK=${PAGE_LINK}
       #- PYTHONUNBUFFERED=1
-    #depends_on:
-    #  clickhouse:
-    #    condition: service_healthy
+    depends_on:
+      clickhouse:
+        condition: service_healthy
