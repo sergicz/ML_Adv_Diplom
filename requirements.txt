@@ -5,5 +5,4 @@ requests==2.34.2
 python-dotenv
 prophet==1.4.0
 joblib
-matplotlib
 pandas
