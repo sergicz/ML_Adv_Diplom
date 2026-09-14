@@ -102,8 +102,8 @@ def train():
     data = request.get_json(silent=True)  # silent=True не выбросит ошибку
     if data is None:
         return jsonify({"error": "Invalid JSON"}), 400
-    dend = data.get('dend','2018-01-01')
-    df = client.query_df(f"SELECT toDate(dat) as ds, SUM(calls) AS y from itex.b24 where dat < '{dend}' group by toDate(dat) order by toDate(dat)")
+    dend = data.get('target_date','2018-01-01')
+    df = client.query_df(f"SELECT toDate(dat) as ds, SUM(calls) AS y from itex.b24 where dat < '{target_date}' group by toDate(dat) order by toDate(dat)")
     if df.empty:
         return jsonify({"status": "error", "message": "База данных пуста или запрос не вернул результатов"}), 400
     logger.info(f'Модель обучена на данных до {dend}')
