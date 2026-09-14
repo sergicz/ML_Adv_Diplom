@@ -146,7 +146,7 @@ def predict():
     model_data = joblib.load('b24_model.joblib')
     metadata = model_data['metadata']
     model = model_data['model']
-    lastdate = str(metadata['training_data']['date_range']['end'])
+    lastdate = metadata['training_data']['date_range']['end']
     logger.info(f"Формируем будущий период на {(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days} дней")
     future = model.make_future_dataframe(periods=(pd.to_datetime(target_date)-pd.to_datetime(lastdate)).days)
     logger.info(f'Предсказываем значение на {target_date}')
