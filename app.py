@@ -130,10 +130,11 @@ def predict():
     logger.info(f'Предсказываем значение на {target_date}')
     forecast = model.predict(future)
     result = forecast[forecast['ds'] == pd.to_datetime(target_date)]
+    fact = client.query(f"SELECT sum(calls) from itex.b24 where dat='{target_date}'").result_rows[0][0]
     if not result.empty:
         return jsonify({
             "status": "success", 
-            "message": f"Прогноз на {target_date}: {int(result['yhat'].iloc[0])}"
+            "message": f"Прогноз на {target_date}: {int(result['yhat'].iloc[0])} факт {fact}"
         })
     else:
         return jsonify({
