@@ -118,7 +118,7 @@ def train():
 
 @app.route('/predict', methods=['GET', 'POST'])
 def predict():
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "JSON body required"}), 400
     target_date = data.get('target_date')
