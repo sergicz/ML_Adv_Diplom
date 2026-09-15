@@ -5,7 +5,7 @@
 1. Клонировать репозиторий git clone https://github.com/sergicz/ML_Adv_Diplom.git
 2. Настроить .env (пример .env.example)
     - параметры подключения к базе ClickHouse
-    - настройки порта Falsk
+    - настройки порта Flask
     - веб-хук с API-KEY к Битрикс24
 3. Запустить микросервисы "docker compose up --build"
 4. API Flask-приложения (по умолчанию http://127.0.0.1:5001), поддерживаются GET, POST
