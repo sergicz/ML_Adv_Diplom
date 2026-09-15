@@ -1,5 +1,7 @@
-Дипломная работа Заварницына Сергея\n
-Курс OTUS ML Avdanced\n
+Дипломная работа Заварницына Сергея
+
+Курс OTUS ML Avdanced
+
 2026 год
 
 1. Клонировать репозиторий git clone https://github.com/sergicz/ML_Adv_Diplom.git
